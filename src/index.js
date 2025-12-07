@@ -14,6 +14,10 @@ app.use(express.json());
 app.use(morgan('dev'));
 app.use(cors());
 
+app.get('/', (req, res) => {
+    res.json({ msg: 'Mini Billo API is running 🚀' });
+});
+
 app.locals.prisma = new PrismaClient();
 
 app.use('/api/auth', authRoutes);
