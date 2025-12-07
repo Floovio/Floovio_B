@@ -6,6 +6,11 @@ This backend is ready to be deployed on [Render](https://render.com).
 - A GitHub repository with this code pushed.
 - A Supabase project (for Database and Auth).
 
+## Security Check
+- [x] `.env` is in `.gitignore` (Secrets won't be pushed to GitHub).
+- [x] Code uses `process.env` for all sensitive values.
+- [x] `package.json` has correct `build` and `start` scripts.
+
 ## Steps
 
 1.  **Create a Web Service**
