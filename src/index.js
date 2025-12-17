@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const campaignRoutes = require('./routes/campaigns');
 const applicationRoutes = require('./routes/applications');
 const submissionRoutes = require('./routes/submissions');
+const waitlistRoutes = require('./routes/waitlist');
 
 const app = express();
 app.use(express.json());
@@ -24,6 +25,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/submissions', submissionRoutes);
+app.use('/api/waitlist', waitlistRoutes);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Server listening on ${PORT}`));

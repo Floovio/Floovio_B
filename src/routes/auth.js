@@ -23,33 +23,96 @@ const validate = (validations) => {
 router.get('/me', verifySupabaseToken, async (req, res) => {
   const prisma = getPrisma(req);
   try {
-    // Check if user is a brand
-    const brand = await prisma.brands.findFirst({
+    // Check if user has a profile in user_profiles table
+    const userProfile = await prisma.user_profiles.findFirst({
       where: { user_id: req.user.id }
     });
 
-    if (brand) {
-      return res.json({ user: req.user, profile: brand, role: 'BRAND' });
+    if (userProfile) {
+      // User has a profile, return role
+      return res.json({
+        authenticated: true,
+        hasProfile: true,
+        role: userProfile.role === 'brand' ? 'brand' : 'creator'
+      });
     }
 
-    // Check if user is a creator
-    const creator = await prisma.creators.findFirst({
-      where: { user_id: req.user.id }
+    // No profile found - first login
+    return res.json({
+      authenticated: true,
+      hasProfile: false
     });
-
-    if (creator) {
-      return res.json({ user: req.user, profile: creator, role: 'CREATOR' });
-    }
-
-    // No profile found
-    res.json({ user: req.user, profile: null, role: null });
   } catch (err) {
     console.error(err);
     res.status(500).json({ msg: 'Server error' });
   }
 });
 
-// POST /api/auth/profile - Create/Update Profile
+// POST /api/auth/onboarding - Create profile and brand/creator record (first-time only)
+router.post('/onboarding', verifySupabaseToken, validate([
+  body('role').isIn(['brand', 'creator']),
+  body('name').notEmpty().trim(),
+]), async (req, res) => {
+  const prisma = getPrisma(req);
+  const { role, name, industry, username, niche_tags } = req.body;
+
+  try {
+    // Check if user already has a profile (prevent duplicate onboarding)
+    const existingProfile = await prisma.user_profiles.findFirst({
+      where: { user_id: req.user.id }
+    });
+
+    if (existingProfile) {
+      return res.status(400).json({ msg: 'User already has a profile. Onboarding can only be done once.' });
+    }
+
+    // Start transaction to create user_profiles and brand/creator
+    const result = await prisma.$transaction(async (tx) => {
+      // Create user_profiles record
+      const userProfile = await tx.user_profiles.create({
+        data: {
+          user_id: req.user.id,
+          email: req.user.email || '',
+          role: role === 'brand' ? 'brand' : 'creator'
+        }
+      });
+
+      // Create brand or creator record based on role
+      if (role === 'brand') {
+        const brand = await tx.brands.create({
+          data: {
+            user_id: req.user.id,
+            name,
+            industry: industry || null
+          }
+        });
+        return { userProfile, profile: brand, role: 'brand' };
+      } else {
+        const creator = await tx.creators.create({
+          data: {
+            user_id: req.user.id,
+            name,
+            username: username || null,
+            niche_tags: niche_tags || []
+          }
+        });
+        return { userProfile, profile: creator, role: 'creator' };
+      }
+    });
+
+    return res.json({
+      authenticated: true,
+      hasProfile: true,
+      role: result.role,
+      profile: result.profile
+    });
+  } catch (err) {
+    console.error('Onboarding error:', err);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+// POST /api/auth/profile - Create/Update Profile (kept for backward compatibility)
 router.post('/profile', verifySupabaseToken, [
   body('role').isIn(['BRAND', 'CREATOR']),
   body('name').notEmpty().trim(),
