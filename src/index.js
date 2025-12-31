@@ -26,6 +26,7 @@ app.use('/api/campaigns', campaignRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/waitlist', waitlistRoutes);
+app.use('/api/admin', require('./routes/admin'));
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Server listening on ${PORT}`));

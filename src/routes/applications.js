@@ -4,6 +4,33 @@ const { verifySupabaseToken } = require('../middleware/supabaseAuth');
 
 const getPrisma = (req) => req.app.locals.prisma;
 
+// GET /api/applications/my - List creator's own applications
+router.get('/my', verifySupabaseToken, async (req, res) => {
+  const prisma = getPrisma(req);
+  try {
+    const creator = await prisma.creators.findFirst({
+      where: { user_id: req.user.id }
+    });
+
+    if (!creator) return res.status(404).json({ msg: 'Creator profile not found' });
+
+    const applications = await prisma.applications.findMany({
+      where: { creator_id: creator.id },
+      include: {
+        campaigns: {
+          include: { brands: true }
+        }
+      },
+      orderBy: { created_at: 'desc' }
+    });
+
+    res.json(applications);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
 // POST /api/applications/:id/accept - Accept application (Brand only)
 router.post('/:id/accept', verifySupabaseToken, async (req, res) => {
   const prisma = getPrisma(req);

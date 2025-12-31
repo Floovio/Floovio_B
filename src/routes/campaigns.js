@@ -19,6 +19,33 @@ const validate = (validations) => {
   };
 };
 
+// GET /api/campaigns/my - List brand's own campaigns
+router.get('/my', verifySupabaseToken, async (req, res) => {
+  const prisma = getPrisma(req);
+  try {
+    const brand = await prisma.brands.findFirst({
+      where: { user_id: req.user.id }
+    });
+
+    if (!brand) return res.status(404).json({ msg: 'Brand profile not found' });
+
+    const campaigns = await prisma.campaigns.findMany({
+      where: { brand_id: brand.id },
+      orderBy: { created_at: 'desc' },
+      include: {
+        _count: {
+          select: { applications: true }
+        }
+      }
+    });
+
+    res.json(campaigns);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
 // GET /api/campaigns - List campaigns (Public)
 router.get('/', [
   query('page').optional().isInt({ min: 1 }).toInt(),
